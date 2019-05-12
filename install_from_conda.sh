@@ -25,6 +25,7 @@ pip install numpy==1.15.3
 
 # Install root_numpy making sure it is built against the installed version of ROOT
 pip uninstall root_numpy
+export MACOSX_DEPLOYMENT_TARGET=10.10
 pip install --no-binary :all: root_numpy
 
 #another package needed for HAL

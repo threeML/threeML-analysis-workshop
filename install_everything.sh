@@ -40,11 +40,11 @@ export PATH=${MINICONDA_PATH}/bin:$PATH
 
 # Create our conda environment installing the Fermi ST as well as threeML and the
 # externals needed
-conda create --name $ENVIRONMENT_NAME -c threeml -c conda-forge/label/cf201901 -c fermi fermitools threeml boost=1.63 cmake zeromq cppzmq healpix_cxx=3.31 pytest==3.9.3  matplotlib numba pyyaml==3.13 yaml==0.1.7 fermipy
+conda create -y --name $ENVIRONMENT_NAME -c threeml -c conda-forge/label/cf201901 -c fermi fermitools threeml boost=1.63 cmake zeromq cppzmq healpix_cxx=3.31 pytest==3.9.3  matplotlib numba pyyaml==3.13 yaml==0.1.7 fermipy
 
 #set up shell (may or may not be required)
-conda init `basename $SHELL`
-source ~/.bashrc
+#conda init `basename $SHELL`
+#source ~/.bashrc
 
 # Activate the conda environment
 source activate $ENVIRONMENT_NAME

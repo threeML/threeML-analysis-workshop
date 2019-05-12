@@ -15,10 +15,10 @@ export N_THREADS=4
 
 # Create our conda environment installing the Fermi ST as well as threeML and the
 # externals needed
-conda create --name $ENVIRONMENT_NAME -c threeml -c conda-forge/label/cf201901 -c fermi fermitools threeml boost=1.63 cmake zeromq cppzmq healpix_cxx=3.31 pytest==3.9.3  matplotlib numba pyyaml==3.13 yaml==0.1.7 fermipy
+conda create -y --name $ENVIRONMENT_NAME -c threeml -c conda-forge/label/cf201901 -c fermi fermitools threeml boost=1.63 cmake zeromq cppzmq healpix_cxx=3.31 pytest==3.9.3  matplotlib numba pyyaml==3.13 yaml==0.1.7 fermipy 
 
 # Activate the conda environment
-conda activate $ENVIRONMENT_NAME
+source activate $ENVIRONMENT_NAME
 
 #This version of numpy may not be available via conda.
 pip install numpy==1.15.3
@@ -44,7 +44,7 @@ unset DYLD_LIBRARY_PATH
 unset PYTHONPATH
 
 # Activate environment
-conda activate $ENVIRONMENT_NAME
+source activate $ENVIRONMENT_NAME
 
 export FERMI_DIR=${CONDA_PREFIX}/share/fermitools/
 

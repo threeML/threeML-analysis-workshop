@@ -19,49 +19,47 @@ def find_and_delete(name, path):
              os.remove(os.path.join(root, name))
 
 def main(use_hal):
-    ra, dec = 83.6292, 22.0144
-    maptree = './data/maptree_fhit.root'
-    response = './data/response_fhit.root'
-    veritasdata = './data/threemlVEGAS20hr2p45.root'
-    latdirectory = './data/lat_crab_data' # will put downloaded Fermi data there
+    ROIra, ROIdec = 83.630, 22.020 #2HWC catalog position of Crab Nebula
+    ra, dec = 83.629, 22.014
+    ra, dec = ROIra, ROIdec
+    maptree = '../data/HAWC_9bin_507days_crab_data.hd5'
+    response = '../data/HAWC_9bin_507days_crab_response.hd5'
+    veritasdata = '../data/threemlVEGAS20hr2p45_run54809_run57993.root'
+    #veritasdata = 'data/threemlVEGAS20hr2p45.root'
+    latdirectory = '../data/lat_crab_data' # will put downloaded Fermi data there
 
-    if use_hal:
-        print('Use HAL plugin')
-        data_radius = 3.0
-        model_radius = 8.0
+    data_radius = 3.0
+    model_radius = 8.0
 
-        roi = HealpixConeROI(data_radius=data_radius,
+    #set up HAWC dataset
+    roi = HealpixConeROI(data_radius=data_radius,
                             model_radius=model_radius,
-                            ra=ra,
-                            dec=dec)
+                            ra=ROIra,
+                            dec=ROIdec)
 
-        hawc = HAL("HAWC", maptree, response, roi)
-
-    else:
-        print('Use LiFF plugin')
-        hawc = threeML.HAWCLike('hawc', maptree, response)
-
+    hawc = HAL("HAWC", maptree, response, roi)
     hawc.set_active_measurements(1, 9) # Perform the fist only within the last nine bins
+    hawc_data = {"name": "HAWC", "data":[hawc], "Emin":1e3*u.GeV, "Emax": 37e3 * u.GeV, "E0":7*u.TeV }
 
-    hawc_data = {"name": "HAWC", "data":[hawc], "Emin":0.3*u.TeV, "Emax": 30 * u.TeV, "E0":7*u.TeV }
-
+    #VERTIAS plugin
     with np.errstate(divide='ignore', invalid='ignore'):
         # This VERITASLike spits a lot of numpy errors. Silent them, I hope that's OK...
         # Udara told me that's normal.
         veritas = VERITASLike('veritas', veritasdata)
 
-    veritas_data = { "name": "VERITAS", "data":[veritas], "Emin":0.1*u.TeV, "Emax":10*u.TeV, "E0":1*u.TeV } 
+    veritas_data = { "name": "VERITAS", "data":[veritas], "Emin":160*u.GeV, "Emax":30e3*u.GeV, "E0":1.0*u.TeV } 
 
     # Fermi via Fermipy 
     tstart = '2017-01-01 00:00:00'
     tstop = '2017-03-01 00:00:00'
     evfile, scfile = threeML.download_LAT_data(ra, dec, 10.0, tstart, tstop, time_type='Gregorian', destination_directory=latdirectory)
     config = threeML.FermipyLike.get_basic_config(evfile=evfile, scfile=scfile, ra=ra, dec=dec)
-    config['selection']['emax'] = 300000.0
+    config['selection']['emax'] = 300000.0 #MeV = 300 GeV
+    config['selection']['emin'] = 100.0 #MeV = 0.1 GeV 
     config['gtlike'] = {'edisp': False}
     fermi_lat = threeML.FermipyLike("LAT", config)
 
-    lat_data = {"name":"Fermi_LAT", "data":[fermi_lat], "Emin":1e-4*u.TeV, "Emax":0.3*u.TeV, "E0":1*u.GeV }
+    lat_data = {"name":"Fermi_LAT", "data":[fermi_lat], "Emin":0.1*u.GeV, "Emax":300*u.GeV, "E0":10*u.GeV }
 
     # Made up "Fermi-LAT" flux points
     # XYLike points are amsumed in base units of 3ML: keV, and keV s-1 cm-2 (bug: even if you provide something else...).
@@ -71,26 +69,13 @@ def main(use_hal):
     # Just save a copy for later use (plot points). Will redefine similar objects with other "source_name"
     xy_test = threeML.XYLike("xy_test", x, y, yerr,  poisson_data=False, quiet=False, source_name='XY_Test')
 
-    joint_data = {"name":"Fermi_VERITAS_HAWC", "data":[fermi_lat, veritas, hawc], "Emin":1e-4*u.TeV, "Emax": 30*u.TeV, "E0":0.1*u.TeV}
+    joint_data = {"name":"Fermi_VERITAS_HAWC", "data":[fermi_lat, veritas, hawc], "Emin":0.1*u.GeV, "Emax": 37e3*u.GeV, "E0":1*u.TeV}
 
-    datasets = [hawc_data, veritas_data, lat_data, joint_data ]
+    datasets = [veritas_data, hawc_data, lat_data, joint_data ]
 
     fig, ax = plt.subplots()
 
-    #datasets = {
-        #'FermiLAT': [fermi_lat, ],
-        # For XYLike, source_name should be same as the one used in the best fit model loaded
-        #'XYTest': [threeML.XYLike("xytest", x, y, yerr,  poisson_data=False, quiet=False, source_name='XYTest'), ],
-        #'VERITAS': [veritas, ],
-        #'HAWC': [hawc, ],
-        #'LAT_VERITAS_HAWC': [hawc, veritas, fermi_lat],
-        # For XYLike, source_name should be same as the one used in the best fit model loaded
-        #'XY_HAWC': [threeML.XYLike("xy_hawc", x, y, yerr,  poisson_data=False, quiet=False, source_name='XY_HAWC'), hawc],
-     #   }
-
     for dataset in datasets:
-
-        find_and_delete("ccube.fits", "." )
 
         data = threeML.DataList(*dataset["data"])
 
@@ -99,34 +84,33 @@ def main(use_hal):
         source = threeML.PointSource(dataset["name"], ra=ra, dec=dec, spectral_shape=spectrum)
 
         model = threeML.Model(source)
-        model[dataset["name"]].spectrum.main.Log_parabola.alpha.bounds = (-4.0, -1.0)
-        model[dataset["name"]].spectrum.main.Log_parabola.alpha.value = -2.653
-        model[dataset["name"]].spectrum.main.Log_parabola.piv.value = dataset["E0"] 
-        # model[key].spectrum.main.Log_parabola.piv.value = 1e7 # 10 GeV
-        model[dataset["name"]].spectrum.main.Log_parabola.K.value = 3.15e-22
-        #model[key].spectrum.main.Log_parabola.K.bounds = (1e-25, 1e-10)
-        model[dataset["name"]].spectrum.main.Log_parabola.beta.value = 0.15
-        model[dataset["name"]].spectrum.main.Log_parabola.beta.bounds = (0.0, 1.0)
+        spectrum.alpha.bounds = (-4.0, -1.0)
+        spectrum.value = -2.653
+        spectrum.piv.value = dataset["E0"]
+        spectrum.K.value = 3.15e-22 #if not giving units, will be interpreted as (keV cm^2 s)^-1
+        spectrum.K.bounds = (1e-50, 1e10)
+        spectrum.beta.value = 0.15
+        spectrum.beta.bounds = (-1.0, 1.0)
 
         model.display()
 
-        jl = threeML.JointLikelihood(model, data)
+        jl = threeML.JointLikelihood(model, data, verbose=True)
         jl.set_minimizer("ROOT")
         with np.errstate(divide='ignore', invalid='ignore'):
             # This VERITASLike spits a lot of numpy errors. Silent them, I hope that's OK...
             # Udara told me that's normal.
             best_fit_parameters, likelihood_values = jl.fit()
+            err = jl.get_errors()
 
             jl.results.write_to("likelihoodresults_{0}.fits".format(dataset["name"]), overwrite=True)
-
-        
-        #plot results
+                    
+        #plot spectra
         color = next(ax._get_lines.prop_cycler)['color']
         try:
             # Using a fixed version of model_plot.py
             threeML.plot_spectra(jl.results,
                 ene_min=dataset["Emin"], ene_max=dataset["Emax"],
-                energy_unit='TeV', flux_unit='TeV/(s cm2)',
+                energy_unit='GeV', flux_unit='erg/(s cm2)',
                 subplot=ax,
                 fit_colors=color,
                 contour_colors=color,
@@ -136,11 +120,14 @@ def main(use_hal):
             print('Warning: fallback without colors... Use a fixed version of model_plot.py! (3ML PR #304)')
             threeML.plot_point_source_spectra(jl.results,
                 ene_min=dataset["Emin"], ene_max=dataset["Emax"],
-                energy_unit='TeV', flux_unit='TeV/(s cm2)',
+                energy_unit='GeV', flux_unit='erg/(s cm2)',
                 subplot=ax,
             )
 
-    plotXYpoints = True
+        find_and_delete("ccube.fits", "." )
+
+
+    plotXYpoints = False
     if plotXYpoints:
         # Ad hoc plotting of the XYLike points. Something cleaner should be added to 3ML directly.
         xx = xy_test.x * 1e-9 # 1e-9 for keV to TeV
@@ -149,6 +136,9 @@ def main(use_hal):
         #plt.errorbar(xx, yy, yerr=yyerr, fmt='o', label='XYTest points')
         plt.legend()
 
+    plt.xlim(5e-2, 50e3)
+    plt.xlabel("Energy [GeV]" )
+    plt.ylabel(r"$E^2~dN/dE~[erg/cm^2/s]$" )
     plt.savefig("joint_spectrum.png" )
 
 
